@@ -36,6 +36,22 @@ The workflow has three stages. Discovery and analysis use LangChain `create_agen
 2. **Research:** One Tavily web search and one Tavily news search run for every competitor. Their normalized results are passed directly to analysis, with no LLM call.
 3. **Analyst:** Receives the raw research dictionary and returns a Pydantic `CompetitorReport` through `ToolStrategy`. It has no search tools and is instructed to extract only supported facts.
 
+```mermaid
+flowchart TD
+    start([Start: company name]) --> discovery
+    discovery["Discovery agent · Nebius + Tavily<br/>Identify primary market and queue 3 competitors"]
+    discovery --> research
+    research["Research · Tavily web + news<br/>Take next competitor and store raw data"]
+    research --> analyst
+    analyst["Analyst agent · Nebius<br/>Validate and append competitor report"]
+    analyst -. "Competitors remain" .-> research
+    analyst -. "Queue empty" .-> finish([End: display report cards])
+```
+
+The diagram follows the graph in `pipeline.py`. Failed research skips analysis
+for that competitor; failed analysis records an error. In either case, the
+workflow continues with the remaining queue and retains successful reports.
+
 The workflow uses a shared `ResearchState` TypedDict in `models.py`, passed as
 `state_schema=ResearchState` to both agents and used by the direct research step and orchestration
 `StateGraph`. It extends LangChain's `AgentState` to retain the required message
